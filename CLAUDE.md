@@ -35,6 +35,7 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - `replay.ts`: recomputes every hand, total and next step from the log, using that session's own rule snapshot.
   - `settle.ts`: the fewest transfers.
 - `src/storage/store.ts`: localStorage save after every event. A failed write is reported, never thrown.
+- `src/storage/backup.ts`: export every session and the house rules to one JSON file, and merge a file back in. Merging only adds sessions or newer hands and never deletes or overwrites; where the phone and the file disagree, the phone's copy is kept. The Backup card on Home (`src/ui/Backup.tsx`) uses the share sheet when the phone supports it (AirDrop, Save to Files), otherwise a download. It turns orange after 7 days without a backup.
 - `src/ui/`: React screens. `App.tsx` is the screen state machine, plus `Home`, `Interview` (with read-back), `Seating`, `Scoreboard`, `WinEntry`, `FalseWin` and `Settlement`.
   - `entryModel.ts`: pure tile-tap editing. A photo can fill a `Draft` or `HandEntry` later.
   - `readback.ts`: worked payouts, computed by the real engine.
@@ -90,6 +91,11 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - **Wake lock.**
   - **Offline/install (PWA):** verified offline in desktop Chrome on localhost (server stopped, app still loads).
   - **Storage-blocked warning.**
+
+## Backup (feature/backup)
+- Added after phase d, at the user's request. 142 tests pass.
+- Clicked through in the in-app browser: export (file captured in the page), and import of the same file, a bad file, and a file with one extra session.
+- Not yet tried on a real phone's share sheet.
 
 ## Open questions (from phase d)
 1. **Resolved:** hosted on GitHub Pages (public repo `mahjong-scorekeeper`, HTTPS), published with `npm run deploy`. No Actions workflow: the GitHub CLI token lacks the `workflow` scope, and the user chose a deploy script over granting it.

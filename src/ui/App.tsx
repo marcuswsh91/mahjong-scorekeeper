@@ -51,6 +51,7 @@ function Screens() {
   const [interview, setInterview] = useState<{ start: RuleSet; atReadBack: boolean } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [imported, setImported] = useState(0); // bumps after a backup import so lists reload
   const state = useMemo(() => (session ? replay(session) : null), [session]);
   const wake = useWakeLock(!!session && screen !== 'home' && screen !== 'interview');
 
@@ -70,7 +71,7 @@ function Screens() {
   const endHand = () => { setPending(NO_PENDING); setScreen('board'); };
 
   // Known names: this session's players, else the most recent session's.
-  const pastSessions = useMemo(() => listSessions(kv).map((x) => loadSession(kv, x.id)).filter((s): s is Session => !!s).reverse(), [session, screen]);
+  const pastSessions = useMemo(() => listSessions(kv).map((x) => loadSession(kv, x.id)).filter((s): s is Session => !!s).reverse(), [session, screen, imported]);
   const known = useMemo(() => {
     for (const s of session ? [session, ...pastSessions] : pastSessions) {
       const seats = replay(s).seats;
@@ -106,7 +107,7 @@ function Screens() {
   }
 
   if (!session || !state || screen === 'home') {
-    return <Home hasLast={!!loadLastRules(kv)} onSame={() => startInterview(true)} onNew={() => startInterview(false)}
+    return <Home kv={kv} onImported={() => setImported((n) => n + 1)} hasLast={!!loadLastRules(kv)} onSame={() => startInterview(true)} onNew={() => startInterview(false)}
       onOpen={(id) => openSession(loadSession(kv, id))}
       sessions={pastSessions.map((s) => { const st = replay(s); return { session: s, hands: st.hands.length, players: st.seats?.join(', ') ?? '' }; })} />;
   }
