@@ -12,6 +12,8 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 - `npx vitest run src/engine`: engine tests (golden hands, edge cases, fast-check zero-sum).
 - `npx vitest run src/session`: rotation, scripted 將, undo and edit, snapshots, settlement, session zero-sum.
 - `npx tsc --noEmit`: type-check.
+- `npm run dev`: run the app. Open the printed Network URL on a phone on the same Wi-Fi.
+- `npx vitest run src/ui`: hand-entry model and read-back worked payouts.
 
 ## Layout
 - `src/rules/catalogue.ts`: every rule item with its zh/en name, condition, default and source note.
@@ -30,6 +32,9 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - `replay.ts`: recomputes every hand, total and next step from the log, using that session's own rule snapshot.
   - `settle.ts`: the fewest transfers.
 - `src/storage/store.ts`: localStorage save after every event. A failed write is reported, never thrown.
+- `src/ui/`: React screens. `App.tsx` is the screen state machine, plus `Home`, `Interview` (with read-back), `Seating`, `Scoreboard`, `WinEntry`, `FalseWin` and `Settlement`.
+  - `entryModel.ts`: pure tile-tap editing. A photo can fill a `Draft` or `HandEntry` later.
+  - `readback.ts`: worked payouts, computed by the real engine.
 
 ## Glossary
 | Code | Chinese | English |
@@ -57,7 +62,17 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 ## Phase status
 - [x] **(a) Rule catalogue, scoring engine and tests** (branch `phase-a/scoring-engine`): 75 tests pass, made up of 59 golden hands, a count check, 7 illegal-hand checks, 4 詐胡 checks, 3 edge cases and a fast-check zero-sum test over 2,000 random hands and rule sets.
 - [x] **(b) Rotation, dice and session state** (branch `phase-b/session-state`, based on phase a): 120 tests pass in total. Phase b adds a scripted 24-hand 將 (streaks, 流局 including a triple-roll 流局, a 詐胡, all four round winds, the redraw prompt), undo and edit, rule snapshots, storage, settlement, and a fast-check session zero-sum test over 500 random logs.
-- [ ] (c) Interview, seating, hand entry, scoreboard and settlement.
+- [x] **(c) Interview, seating, hand entry, scoreboard and settlement** (branch `phase-c/table-screens`): 132 tests pass. Clicked through at 375px in the in-app browser:
+  - first-time interview,
+  - read-back matching the golden values,
+  - seating,
+  - a 碰碰胡 自摸 with 4-5-6 entered by tapping (11/10/10),
+  - a 詐胡,
+  - a 流局,
+  - an illegal hand (exact reasons, Save disabled, Save as 流局 offered),
+  - reload mid-session and mid-entry (nothing lost),
+  - settlement,
+  - "Same as last time" from app open to seating in 2 taps.
 - [ ] (d) Table polish: tap targets, wake lock, undo and edit, PWA.
 
 ## Open questions (from phase a)
@@ -91,3 +106,14 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 4. **The first seat entered** (seats[0]) is 東 and deals first in each new 將.
 5. **Totals are kept per player name,** so a player can swap in at a redraw. Names must be unique.
 6. **An edit that leaves a later redraw out of place** (the 將 hadn't ended yet) is flagged on the scoreboard, never blocked. The redraw still restarts at 東風東.
+
+## Open questions (from phase c)
+1. The dealer's dice are typed as three digits on the scoreboard (e.g. `456`). They're kept as a draft until the hand is saved, so a reload keeps them.
+2. The winning tile has its own row ("Winning tile 胡牌"), so marking it is one grid tap. Concealed entry jumps to that row once the concealed count is full.
+3. Phase (d) to-dos:
+   - Keep the tile grid in view while filling a row (right now the active row scrolls off).
+   - Add undo and edit buttons (the data already supports both).
+   - Wake lock.
+   - Offline install (service worker).
+4. If the browser blocks storage (e.g. some private modes), the app falls back to memory and data is lost on reload. Should it show a warning?
+5. Home leaves a session without ending it; it can be reopened from the Sessions list.

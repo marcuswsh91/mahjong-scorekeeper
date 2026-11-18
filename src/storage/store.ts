@@ -58,6 +58,34 @@ export function saveLastRules(kv: KV, rules: RuleSet): SaveResult {
   return write(kv, K.lastRules, rules);
 }
 
+/** The session the app reopens to after a refresh or closed tab. */
+export function loadCurrentId(kv: KV): string | null {
+  return read(kv, `${P}current`);
+}
+export function saveCurrentId(kv: KV, id: string | null): SaveResult {
+  return write(kv, `${P}current`, id);
+}
+
+/** Work in progress that isn't an event yet (the dealer's roll, a half-entered hand). */
+export function loadDraft<T>(kv: KV, sessionId: string): T | null {
+  return read(kv, `${P}draft.${sessionId}`);
+}
+export function saveDraft(kv: KV, sessionId: string, draft: unknown): SaveResult {
+  return write(kv, `${P}draft.${sessionId}`, draft);
+}
+
+/** localStorage, or an in-memory stand-in if the browser blocks it (private mode). */
+export function browserKV(): KV {
+  try {
+    const k = '__mj_probe__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    return window.localStorage;
+  } catch {
+    return memoryKV();
+  }
+}
+
 export function memoryKV(): KV & { data: Map<string, string> } {
   const data = new Map<string, string>();
   return { data, getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) };
