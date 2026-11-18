@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // GitHub Pages serves the app under /mahjong-scorekeeper/; `npm run deploy` sets BASE_PATH.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     // Offline + install to home screen. The service worker precaches the whole built app,
@@ -14,7 +16,6 @@ export default defineConfig({
         name: '台麻計分 Mahjong score keeper',
         short_name: '台麻計分',
         description: 'Taiwanese 16-tile mahjong score keeper',
-        start_url: '/',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#14532d',
