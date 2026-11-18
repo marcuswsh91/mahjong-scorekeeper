@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { suitOf, tileName } from '../engine/tiles';
 
-export function Stepper({ value, min = 0, max = 99, offAtZero, onChange }: { value: number; min?: number; max?: number; offAtZero?: boolean; onChange: (v: number) => void }) {
+/** A −/+ stepper. `null` = not answered yet ("—"): − then gives the minimum, + gives 1. */
+export function Stepper({ value, min = 0, max = 99, offAtZero, onChange }: { value: number | null; min?: number; max?: number; offAtZero?: boolean; onChange: (v: number) => void }) {
   return (
     <span className="stepper">
-      <button aria-label="less" disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
-      <span className="val">{offAtZero && value === 0 ? 'Off' : value}</span>
-      <button aria-label="more" disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
+      <button aria-label="less" disabled={value !== null && value <= min} onClick={() => onChange(value === null ? min : value - 1)}>−</button>
+      <span className="val">{value === null ? '—' : offAtZero && value === 0 ? 'Off' : value}</span>
+      <button aria-label="more" disabled={value !== null && value >= max} onClick={() => onChange(value === null ? Math.min(max, Math.max(min, 1)) : value + 1)}>+</button>
     </span>
   );
 }

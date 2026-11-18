@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CATALOGUE, GROUP_ORDER, type CatalogueItem, type RuleValue } from '../rules/catalogue';
+import { CATALOGUE, GROUP_ORDER, RECOMMENDED, RECOMMENDED_SOURCE, type CatalogueItem, type RuleValue } from '../rules/catalogue';
 import { validateRuleSet, type CustomItem, type RuleSet } from '../rules/ruleset';
 import { Seg, Stepper } from './bits';
 import { workedExamples } from './readback';
@@ -12,26 +12,54 @@ export function formatValue(item: CatalogueItem, v: RuleValue): string {
   return `${v}`;
 }
 
+/** One-tap fills: recommended, common, last time (merged when they agree). */
+function quickFills(item: CatalogueItem, last: RuleValue | undefined): { value: RuleValue; label: string }[] {
+  const out: { value: RuleValue; label: string }[] = [];
+  const add = (v: RuleValue | undefined, why: string) => {
+    if (v === null || v === undefined) return;
+    const hit = out.find((o) => o.value === v);
+    if (hit) hit.label += `, ${why}`;
+    else out.push({ value: v, label: why });
+  };
+  add(RECOMMENDED[item.id], 'recommended');
+  add(item.default, 'common');
+  add(last, 'last time');
+  return out;
+}
+
 function ItemRow({ item, value, last, onChange }: { item: CatalogueItem; value: RuleValue; last: RuleValue | undefined; onChange: (v: RuleValue) => void }) {
-  const changed = last !== undefined && last !== value;
+  const missing = value === null || value === undefined;
+  const changed = !missing && last !== undefined && last !== null && last !== value;
+  const rec = RECOMMENDED[item.id];
   return (
-    <div className={`item${changed ? ' changed' : ''}`}>
+    <div className={`item${changed ? ' changed' : ''}${missing ? ' missing' : ''}`}>
       <div className="spread">
         <div><span className="zh">{item.zh}</span> <span className="muted">{item.en}</span></div>
+        {missing && <span className="tag">needs an answer</span>}
       </div>
       <p className="small">{item.condition}</p>
       {item.note && <p className="note">{item.note}</p>}
       <p className="muted small">
-        {item.default === null ? 'No common standard: you choose' : `Common: ${formatValue(item, item.default)}`}
+        Recommended ({RECOMMENDED_SOURCE}): {rec === undefined ? 'no published value' : <b>{formatValue(item, rec)}</b>}
+        {' · '}{item.default === null ? 'No common standard: you choose' : <>Common: {formatValue(item, item.default)}</>}
         {item.source.startsWith('CC') && <> · <span className="tag">not from your brief</span></>}
-        {changed && <> · Last time: <b>{formatValue(item, last)}</b></>}
+        {last !== undefined && last !== null && <> · Last time: {formatValue(item, last)}</>}
       </p>
       <div style={{ marginTop: 6 }}>
-        {item.kind === 'tai' && <Stepper value={Number(value ?? 0)} max={item.max} offAtZero onChange={onChange} />}
-        {item.kind === 'number' && <Stepper value={Number(value ?? item.min)} min={item.min} max={item.max} offAtZero={item.id === 'taiCap'} onChange={onChange} />}
+        {item.kind === 'tai' && <Stepper value={missing ? null : Number(value)} max={item.max} offAtZero onChange={onChange} />}
+        {item.kind === 'number' && <Stepper value={missing ? null : Number(value)} min={item.min} max={item.max} offAtZero={item.id === 'taiCap'} onChange={onChange} />}
         {item.kind === 'yesno' && <Seg options={[{ value: true, label: 'Yes' }, { value: false, label: 'No' }]} value={value as boolean | null} onChange={onChange} />}
         {item.kind === 'choice' && <Seg options={item.options.map((o) => ({ value: o.value, label: o.label }))} value={value as string | null} onChange={onChange} />}
       </div>
+      {(item.kind === 'tai' || item.kind === 'number') && (
+        <div className="row" style={{ marginTop: 6 }}>
+          {quickFills(item, last).map((q) => (
+            <button key={String(q.value)} className={`chip${q.value === value ? ' on' : ''}`} onClick={() => onChange(q.value)}>
+              {formatValue(item, q.value)} <span className="muted">({q.label})</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -104,6 +132,10 @@ export function Interview({ start, last, atReadBack, onConfirm, onCancel }: { st
   const set = (id: string, v: RuleValue) => setRules((r) => ({ ...r, values: { ...r.values, [id]: v } }));
   const go = (s: number) => { setStep(s); window.scrollTo(0, 0); };
   const valid = validateRuleSet(rules).length === 0;
+  // Every item on this page needs an answer (and every custom item a name) before Next.
+  const missing = readBack ? 0
+    : CATALOGUE.filter((i) => i.group === group.id && (rules.values[i.id] === null || rules.values[i.id] === undefined)).length
+      + (group.id === 'regional' ? rules.custom.filter((c) => !c.name.trim()).length : 0);
 
   return (
     <>
@@ -123,12 +155,15 @@ export function Interview({ start, last, atReadBack, onConfirm, onCancel }: { st
           {group.id === 'regional' && <CustomItems items={rules.custom} onChange={(custom) => setRules((r) => ({ ...r, custom }))} />}
         </>
       )}
-      <div className="sticky"><div>
-        {step > 0 && <button onClick={() => go(step - 1)}>Back</button>}
-        {readBack
-          ? <button className="primary" disabled={!valid} onClick={() => onConfirm(rules)}>Confirm rules → seating</button>
-          : <button className="primary" onClick={() => go(step + 1)}>Next</button>}
-      </div></div>
+      <div className="sticky">
+        {missing > 0 && <p className="note" style={{ textAlign: 'center', margin: '0 0 6px' }}>Fill in {missing} more item{missing === 1 ? '' : 's'} on this page to continue.</p>}
+        <div>
+          {step > 0 && <button onClick={() => go(step - 1)}>Back</button>}
+          {readBack
+            ? <button className="primary" disabled={!valid} onClick={() => onConfirm(rules)}>Confirm rules → seating</button>
+            : <button className="primary" disabled={missing > 0} onClick={() => go(step + 1)}>Next</button>}
+        </div>
+      </div>
     </>
   );
 }

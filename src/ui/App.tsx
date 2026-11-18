@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { HandEntry, Seat } from '../engine/types';
-import { defaultRuleSet, snapshot, type RuleSet } from '../rules/ruleset';
-import { newId, type BaseEvent } from '../session/events';
+import { blankRuleSet, snapshot, type RuleSet } from '../rules/ruleset';
+import { effectiveEvents, newId, type HandEvent, type SessionEvent } from '../session/events';
 import { replay, type Session } from '../session/replay';
 import {
-  appendEvent, browserKV, listSessions, loadCurrentId, loadDraft, loadLastRules, loadSession,
+  appendEvent, browserStorage, listSessions, loadCurrentId, loadDraft, loadLastRules, loadSession,
   saveCurrentId, saveDraft, saveLastRules, saveSession,
 } from '../storage/store';
+import { EditHand } from './EditHand';
 import { emptyDraft, parseDice } from './entryModel';
 import { FalseWin } from './FalseWin';
 import { Home } from './Home';
@@ -14,10 +15,11 @@ import { Interview } from './Interview';
 import { Scoreboard } from './Scoreboard';
 import { Seating } from './Seating';
 import { Settlement } from './Settlement';
+import { useWakeLock } from './wakeLock';
 import { WinEntry, type PendingWin } from './WinEntry';
 
-const kv = browserKV();
-type Screen = 'home' | 'interview' | 'seating' | 'board' | 'win' | 'falseWin' | 'settle';
+const { kv, persistent } = browserStorage();
+type Screen = 'home' | 'interview' | 'seating' | 'board' | 'win' | 'falseWin' | 'settle' | 'edit';
 interface Pending { diceText: string; win: PendingWin | null }
 const NO_PENDING: Pending = { diceText: '', win: null };
 
@@ -33,13 +35,24 @@ function restore(): { session: Session | null; pending: Pending; screen: Screen 
 }
 
 export function App() {
+  return (
+    <>
+      {!persistent && <div className="banner-warn">This browser isn't saving: scores will be lost if the page reloads. Leave private browsing, or allow site data.</div>}
+      <Screens />
+    </>
+  );
+}
+
+function Screens() {
   const [boot] = useState(restore);
   const [session, setSession] = useState<Session | null>(boot.session);
   const [screen, setScreen] = useState<Screen>(boot.screen);
   const [pending, setPendingState] = useState<Pending>(boot.pending);
   const [interview, setInterview] = useState<{ start: RuleSet; atReadBack: boolean } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const state = useMemo(() => (session ? replay(session) : null), [session]);
+  const wake = useWakeLock(!!session && screen !== 'home' && screen !== 'interview');
 
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);
 
@@ -47,7 +60,7 @@ export function App() {
     setPendingState(p);
     if (session) saveDraft(kv, session.id, p);
   };
-  const commit = (make: (id: string, at: string) => BaseEvent) => {
+  const commit = (make: (id: string, at: string) => SessionEvent) => {
     if (!session) return;
     const { session: s, saved } = appendEvent(kv, session, make(newId(), new Date().toISOString()));
     setSession(s);
@@ -67,7 +80,9 @@ export function App() {
   }, [session, pastSessions]);
 
   const startInterview = (atReadBack: boolean) => {
-    setInterview({ start: loadLastRules(kv) ?? defaultRuleSet(), atReadBack });
+    const last = loadLastRules(kv);
+    // "Same as last time" starts filled; a full interview starts blank and needs every answer.
+    setInterview({ start: atReadBack && last ? last : blankRuleSet(last?.custom), atReadBack });
     setScreen('interview');
   };
   const openSession = (s: Session | null) => {
@@ -122,7 +137,26 @@ export function App() {
     return <Settlement state={state} onBack={() => setScreen('board')} onFinish={() => openSession(null)} />;
   }
 
-  return <Scoreboard state={state} rules={rules} diceText={pending.diceText} saveError={saveError}
+  if (screen === 'edit' && editing) {
+    const original = effectiveEvents(session.events).find((e) => e.id === editing) as HandEvent | undefined;
+    const record = state.hands.find((h) => h.eventId === editing);
+    if (original && record) {
+      return <EditHand key={editing} record={record} original={original} rules={rules}
+        onCancel={() => { setEditing(null); setScreen('board'); }}
+        onSave={(replacement) => { commit((id, at) => ({ type: 'amend', id, at, target: editing, replacement })); setEditing(null); setScreen('board'); }} />;
+    }
+  }
+
+  // Undo removes the last hand, or a seat redraw (never the session's first seating).
+  const eff = effectiveEvents(session.events);
+  const lastEvent = eff[eff.length - 1];
+  const undoLabel = !lastEvent ? null
+    : lastEvent.type === 'seating' ? (eff.filter((e) => e.type === 'seating').length > 1 ? 'Undo seat redraw' : null)
+      : `Undo hand #${state.hands.length}`;
+
+  return <Scoreboard state={state} rules={rules} diceText={pending.diceText} saveError={saveError} wake={wake}
+    undoLabel={undoLabel} onUndo={() => lastEvent && commit((id, at) => ({ type: 'undo', id, at, target: lastEvent.id }))}
+    onEdit={(h) => { setEditing(h.eventId); setScreen('edit'); }}
     onDice={(diceText) => setPending({ ...pending, diceText })}
     onWin={() => { if (!pending.win) setPending({ ...pending, win: { winner: null, from: null, draft: emptyDraft() } }); setScreen('win'); }}
     onDraw={() => { commit((id, at) => ({ type: 'draw', id, at, dice })); endHand(); }}

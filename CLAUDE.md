@@ -14,6 +14,8 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 - `npx tsc --noEmit`: type-check.
 - `npm run dev`: run the app. Open the printed Network URL on a phone on the same Wi-Fi.
 - `npx vitest run src/ui`: hand-entry model and read-back worked payouts.
+- `npm run build && npx vite preview`: the built app, with offline caching, on http://localhost:4173. Service workers and the wake lock only work over HTTPS or localhost.
+- `python3 scripts/make-icons.py public`: regenerate the app icons.
 
 ## Layout
 - `src/rules/catalogue.ts`: every rule item with its zh/en name, condition, default and source note.
@@ -35,6 +37,10 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 - `src/ui/`: React screens. `App.tsx` is the screen state machine, plus `Home`, `Interview` (with read-back), `Seating`, `Scoreboard`, `WinEntry`, `FalseWin` and `Settlement`.
   - `entryModel.ts`: pure tile-tap editing. A photo can fill a `Draft` or `HandEntry` later.
   - `readback.ts`: worked payouts, computed by the real engine.
+  - `EditHand.tsx`: edit any past hand (appends an amend). Undo is on the scoreboard (appends an undo).
+  - `wakeLock.ts`: keeps the screen on during a session and re-requests it when the page becomes visible.
+- `vite.config.ts`: vite-plugin-pwa (manifest and Workbox precache of the whole app).
+- `RECOMMENDED` in `catalogue.ts`: recommended values from zh.wikibooks. There is no official table.
 
 ## Glossary
 | Code | Chinese | English |
@@ -74,6 +80,21 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - settlement,
   - "Same as last time" from app open to seating in 2 taps.
 - [ ] (d) Table polish: tap targets, wake lock, undo and edit, PWA.
+
+- [x] **(d) Table polish** (branch `phase-d/table-polish`): 135 tests pass.
+  - **Interview:** every full interview starts blank, and Next is locked until each item on the page has an answer. Each item shows its recommended (zh.wikibooks), common and last-time values, with one-tap fills. "Same as last time" still takes 2 taps.
+  - **Hand entry:** who won and how fold into one line once picked, and the tile grid pins to the top above the rows.
+  - **Tap targets:** 48px.
+  - **Undo** the last hand or a seat redraw. **Edit** any past hand, including changing its kind, with recompute.
+  - **Wake lock.**
+  - **Offline/install (PWA):** verified offline in desktop Chrome on localhost (server stopped, app still loads).
+  - **Storage-blocked warning.**
+
+## Open questions (from phase d)
+1. **The phone needs HTTPS for offline install and the wake lock.** Over `http://10.0.0.34` it can't install, work offline or keep the screen on. Options: a free static host (Netlify, Cloudflare Pages, GitHub Pages). Waiting on the user.
+2. **Wake lock:** only the "unsupported/refused" paths were seen, in the in-app browser. Not yet checked on a real phone.
+3. **No official tai table exists.** Recommended values are from zh.wikibooks. Mahjong Time's table uses a different scale (清一色 40, 碰碰胡 10), so it isn't used.
+4. **An edit in progress isn't saved as a draft;** a reload during an edit returns to the scoreboard. Saved hands are never affected.
 
 ## Open questions (from phase a)
 **Catalogue values that differ from zh.wikibooks「臺灣麻將」** (brief values kept, source noted per item):

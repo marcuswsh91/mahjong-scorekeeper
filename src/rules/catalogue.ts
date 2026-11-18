@@ -201,3 +201,21 @@ export const CATALOGUE: CatalogueItem[] = [
 ];
 
 export const CATALOGUE_BY_ID: Map<string, CatalogueItem> = new Map(CATALOGUE.map((i) => [i.id, i]));
+
+/**
+ * Recommended values. There is no official Taiwanese 16-tile tai table; these come from the
+ * closest published home-table reference on the same scale (base + tai):
+ * zh.wikibooks「臺灣麻將」台數表 §4.3–4.11, oldid 186135. Items it doesn't cover are absent
+ * ("No published value"). Mahjong Time's Taiwanese page uses a different scale (清一色 40,
+ * 碰碰胡 10), so it isn't used for recommendations.
+ */
+export const RECOMMENDED_SOURCE = 'zh.wikibooks 臺灣麻將';
+export const RECOMMENDED: Record<string, RuleValue> = {
+  dealer: 1, streak: 2,
+  zimo: 1, menqing: 1, menqingZimo: 3, quanqiuren: 2, duting: 1, gangshang: 1, haidi: 1, hedi: 1, qianggang: 1,
+  roundWind: 1, seatWind: 1, dragon: 1, xiaosanyuan: 4, dasanyuan: 8, dasanyuanReplacesDragon: true,
+  xiaosixi: 8, xiaosixiReplacesWind: false, dasixi: 16,
+  pinghu: 2, pengpeng: 4, an3: 2, an4: 5, an5: 8, hunyise: 4, qingyise: 8,
+  zhenghua: 1, huagang: 2, qiqiangyi: 8, baxian: 8,
+  tianhu: 32, dihu: 16, diting: 8, tianting: 16,
+};

@@ -17,13 +17,15 @@ function Toggle({ on, label, onChange }: { on: boolean; label: string; onChange:
   return <button className={on ? 'on' : ''} aria-pressed={on} onClick={() => onChange(!on)}>{label}</button>;
 }
 
-export function WinEntry({ seats, rules, rotation, dice, value, onChange, onSave, onSaveAsDraw, onCancel }: {
+export function WinEntry({ seats, rules, rotation, dice, value, onChange, onSave, onSaveAsDraw, onCancel, title = 'Record a win 胡', top }: {
   seats: readonly string[]; rules: RuleSet; rotation: RotationState; dice: Dice;
   value: PendingWin; onChange: (p: PendingWin) => void;
-  onSave: (winner: Seat, from: 'zimo' | Seat, entry: HandEntry) => void; onSaveAsDraw: () => void; onCancel: () => void;
+  onSave: (winner: Seat, from: 'zimo' | Seat, entry: HandEntry) => void; onSaveAsDraw?: () => void; onCancel: () => void;
+  title?: string; top?: ReactNode;
 }) {
   const [row, setRow] = useState<Row>(value.draft.concealed.length >= concealedTarget(value.draft) ? 'winning' : 'concealed');
   const [error, setError] = useState<string | null>(null);
+  const [pickWho, setPickWho] = useState(false);
   const { winner, from, draft } = value;
   const setDraft = (d: Draft) => onChange({ ...value, draft: d });
   const flags = draft.flags;
@@ -53,21 +55,46 @@ export function WinEntry({ seats, rules, rotation, dice, value, onChange, onSave
   return (
     <>
       <button className="link" onClick={onCancel}>Cancel</button>
-      <h1>Record a win 胡</h1>
+      <h1>{title}</h1>
+      {top}
 
-      <div className="card stack">
-        <b>Who won?</b>
-        <Seg options={seats.map((n, i) => ({ value: i as Seat, label: n }))} value={winner}
-          onChange={(w) => onChange({ ...value, winner: w, from: from === w ? null : from })} />
-        <b>How?</b>
-        <Seg options={[{ value: 'zimo' as const, label: '自摸 self-draw' }, ...seats.map((n, i) => ({ value: i as Seat, label: `${n} discarded` })).filter((o) => o.value !== winner)]}
-          value={from} onChange={(f) => onChange({ ...value, from: f })} />
-        {dice && <p className="muted small">Dice {dice.join('-')} (from the scoreboard)</p>}
-      </div>
+      {winner !== null && from !== null && !pickWho ? (
+        <div className="card spread">
+          <span><b>{seats[winner]}</b> {from === 'zimo' ? '自摸 self-draw' : `off ${seats[from]}'s discard`}{dice ? ` · dice ${dice.join('-')}` : ''}</span>
+          <button onClick={() => setPickWho(true)}>Change</button>
+        </div>
+      ) : (
+        <div className="card stack">
+          <b>Who won?</b>
+          <Seg options={seats.map((n, i) => ({ value: i as Seat, label: n }))} value={winner}
+            onChange={(w) => onChange({ ...value, winner: w, from: from === w ? null : from })} />
+          <b>How?</b>
+          <Seg options={[{ value: 'zimo' as const, label: '自摸 self-draw' }, ...seats.map((n, i) => ({ value: i as Seat, label: `${n} discarded` })).filter((o) => o.value !== winner)]}
+            value={from} onChange={(f) => { onChange({ ...value, from: f }); if (winner !== null) setPickWho(false); }} />
+          {dice && <p className="muted small">Dice {dice.join('-')} (from the scoreboard)</p>}
+        </div>
+      )}
 
       <div className="card">
         <Seg options={[{ value: '', label: 'Tile hand' }, { value: 'qiqiangyi', label: '七搶一' }, { value: 'baxian', label: '八仙過海' }]}
           value={draft.flowerWin ?? ''} onChange={(v) => setDraft({ ...draft, flowerWin: (v || undefined) as Draft['flowerWin'] })} />
+
+        {/* Pinned to the top while scrolling, so the rows being filled stay in view just below it. */}
+        <div className="gridpanel">
+          <p className="small" style={{ margin: '0 0 4px' }}>
+            Adding to: <b>{({ concealed: 'Concealed 手牌', winning: 'Winning tile 胡牌', chi: '吃 (tap the lowest tile)', pon: '碰', minkan: '明槓', ankan: '暗槓', flowers: 'Flowers 花' } as Record<Row, string>)[row]}</b>
+          </p>
+          {error && <div className="alert" style={{ margin: '0 0 4px' }}>{error}</div>}
+          {row === 'flowers' ? (
+            <div className="tiles" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              {ALL_FLOWERS.map((f) => <Tile key={f} code={f} onClick={() => tap(f)} />)}
+            </div>
+          ) : !draft.flowerWin && (
+            <div className="tiles">
+              {SUITS.flatMap((s) => ALL_TILES.filter((t) => t[1] === s)).map((t) => <Tile key={t} code={t} onClick={() => tap(t)} />)}
+            </div>
+          )}
+        </div>
 
         {!draft.flowerWin && rowBox('concealed', `Concealed 手牌 ${draft.concealed.length} / ${target} (tap a tile to remove)`,
           draft.concealed.map((t, i) => <Tile key={i} code={t} onClick={() => setDraft(removeConcealed(draft, i))} />))}
@@ -92,18 +119,6 @@ export function WinEntry({ seats, rules, rotation, dice, value, onChange, onSave
         )}
         {rowBox('flowers', `Flowers 花 ${draft.flowers.length}`, draft.flowers.length ? draft.flowers.map((f) => <Tile key={f} code={f} onClick={() => setDraft({ ...draft, flowers: draft.flowers.filter((x) => x !== f) })} />) : <span className="muted small">None</span>)}
 
-        {error && <div className="alert">{error}</div>}
-        <div style={{ marginTop: 10 }}>
-          {row === 'flowers' ? (
-            <div className="tiles" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-              {ALL_FLOWERS.map((f) => <Tile key={f} code={f} onClick={() => tap(f)} />)}
-            </div>
-          ) : !draft.flowerWin && (
-            <div className="tiles">
-              {SUITS.flatMap((s) => ALL_TILES.filter((t) => t[1] === s)).map((t) => <Tile key={t} code={t} onClick={() => tap(t)} />)}
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="card stack">
@@ -133,7 +148,7 @@ export function WinEntry({ seats, rules, rotation, dice, value, onChange, onSave
             <>
               <b>Not a legal win yet:</b>
               <ul className="lines small">{result.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-              <button onClick={onSaveAsDraw}>Can't fix it? Save as 流局 instead</button>
+              {onSaveAsDraw && <button onClick={onSaveAsDraw}>Can't fix it? Save as 流局 instead</button>}
             </>
           ) : (
             <>

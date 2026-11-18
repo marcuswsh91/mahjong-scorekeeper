@@ -74,15 +74,18 @@ export function saveDraft(kv: KV, sessionId: string, draft: unknown): SaveResult
   return write(kv, `${P}draft.${sessionId}`, draft);
 }
 
-/** localStorage, or an in-memory stand-in if the browser blocks it (private mode). */
-export function browserKV(): KV {
+/**
+ * localStorage, or an in-memory stand-in if the browser blocks it (some private modes).
+ * `persistent: false` means nothing survives a reload; the app shows a warning.
+ */
+export function browserStorage(): { kv: KV; persistent: boolean } {
   try {
     const k = '__mj_probe__';
     window.localStorage.setItem(k, '1');
     window.localStorage.removeItem(k);
-    return window.localStorage;
+    return { kv: window.localStorage, persistent: true };
   } catch {
-    return memoryKV();
+    return { kv: memoryKV(), persistent: false };
   }
 }
 

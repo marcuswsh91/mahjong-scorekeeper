@@ -85,3 +85,10 @@ export function snapshot(rules: RuleSet, now = new Date()): RuleSnapshot {
   const copy: RuleSet = JSON.parse(JSON.stringify(rules));
   return { version: hashRuleSet(copy), confirmedAt: now.toISOString(), rules: Object.freeze(copy) };
 }
+
+/** Every catalogue value unanswered: the interview makes the scorekeeper fill each one in. */
+export function blankRuleSet(custom: CustomItem[] = []): RuleSet {
+  const values: Record<string, RuleValue> = {};
+  for (const item of CATALOGUE) values[item.id] = null;
+  return { schema: 1, values, custom: custom.map((c) => ({ ...c })) };
+}

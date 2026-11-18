@@ -15,7 +15,7 @@
   --s: #15803d; /* 條 */
   --z: #1c1b19; /* 字 */
   --f: #a16207; /* 花 */
-  --tap: 44px;
+  --tap: 48px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -72,7 +72,7 @@ input[type=text], input[type=number], input[inputmode] { min-height: var(--tap);
 .player .total { font-size: 24px; font-weight: 700; }
 
 .tiles { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-.tile { min-height: 48px; padding: 0; border-radius: 8px; font-size: 15px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
+.tile { min-height: 52px; padding: 0; border-radius: 8px; font-size: 15px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
 .tile small { font-size: 11px; font-weight: 500; }
 .tile.m { color: var(--m); } .tile.p { color: var(--p); } .tile.s { color: var(--s); } .tile.z { color: var(--z); } .tile.f { color: var(--f); }
 .handrow { display: flex; flex-wrap: wrap; gap: 4px; min-height: 52px; align-items: center; padding: 6px; border: 1px dashed var(--line); border-radius: 10px; }
@@ -87,3 +87,9 @@ input[type=text], input[type=number], input[inputmode] { min-height: var(--tap);
 .sticky > div { max-width: 528px; margin: 0 auto; display: flex; gap: 8px; }
 .sticky button { flex: 1; min-height: 52px; }
 details summary { cursor: pointer; min-height: var(--tap); display: flex; align-items: center; }
+.item.missing { border-left: 3px solid var(--warn); padding-left: 9px; }
+button.chip { min-height: 40px; padding: 0 10px; border-radius: 20px; font-size: 14px; }
+.sticky .note { max-width: 528px; margin: 0 auto; }
+.gridpanel { position: sticky; top: 0; z-index: 2; margin: 10px -12px 0; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: 0 6px 12px rgba(0, 0, 0, .08); }
+.gridpanel .tile { min-height: 46px; }
+.banner-warn { background: var(--warn); color: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 8px 0; font-weight: 600; }

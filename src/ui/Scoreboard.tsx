@@ -5,8 +5,9 @@ import type { RuleSet } from '../rules/ruleset';
 import { streakText, WIND, type HandRecord, type SessionState } from '../session/replay';
 import { signed } from './bits';
 import { parseDice } from './entryModel';
+import type { WakeState } from './wakeLock';
 
-function HandLog({ h }: { h: HandRecord }) {
+function HandLog({ h, onEdit }: { h: HandRecord; onEdit: () => void }) {
   const r = h.before;
   const where = `${WIND[r.roundWind]}風${WIND[r.dealer]}`;
   const name = (s: number) => h.seats[s];
@@ -36,15 +37,18 @@ function HandLog({ h }: { h: HandRecord }) {
       ))}
       {h.kind === 'draw' && <p className="small">Nobody pays.</p>}
       <p className="small"><b>Next:</b> {h.nextText}</p>
+      <button onClick={onEdit}>Edit this hand</button>
     </details>
   );
 }
 
-export function Scoreboard({ state, rules, diceText, onDice, onWin, onDraw, onFalseWin, onRedraw, onSettle, onHome, saveError }: {
+export function Scoreboard({ state, rules, diceText, onDice, onWin, onDraw, onFalseWin, onRedraw, onSettle, onHome, onEdit, onUndo, undoLabel, wake, saveError }: {
   state: SessionState; rules: RuleSet; diceText: string; onDice: (t: string) => void;
+  onEdit: (h: HandRecord) => void; onUndo: () => void; undoLabel: string | null; wake: WakeState;
   onWin: () => void; onDraw: () => void; onFalseWin: () => void; onRedraw: () => void; onSettle: () => void; onHome: () => void; saveError: string | null;
 }) {
   const [confirmDraw, setConfirmDraw] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
   const rot = state.next.rotation;
   const seats = state.seats!;
   const dice = parseDice(diceText);
@@ -55,6 +59,8 @@ export function Scoreboard({ state, rules, diceText, onDice, onWin, onDraw, onFa
   return (
     <>
       <div className="spread"><button className="link" onClick={onHome}>Home</button><button className="link" onClick={onSettle}>Settle up</button></div>
+      {wake === 'unsupported' && <p className="muted small">This browser can't keep the screen awake here (it needs the installed or HTTPS version). Set Auto-Lock to Never for now.</p>}
+      {wake === 'denied' && <p className="muted small">The browser didn't allow keeping the screen awake. The screen may lock; nothing is lost if it does.</p>}
       {saveError && <div className="alert">{saveError} Keep playing; the next save will try again.</div>}
       {state.seatingWarnings.map((w) => <div key={w} className="alert">{w}</div>)}
       <div className="banner">
@@ -94,9 +100,15 @@ export function Scoreboard({ state, rules, diceText, onDice, onWin, onDraw, onFa
         </div>
       )}
 
-      <h2>Hands</h2>
+      <div className="spread"><h2>Hands</h2>{undoLabel && !confirmUndo && <button onClick={() => setConfirmUndo(true)}>↶ {undoLabel}</button>}</div>
+      {confirmUndo && undoLabel && (
+        <div className="card">
+          <p>{undoLabel}? Totals and rotation are recalculated. The log keeps a record of the undo.</p>
+          <div className="row"><button className="primary" onClick={() => { setConfirmUndo(false); onUndo(); }}>Yes, undo</button><button onClick={() => setConfirmUndo(false)}>Cancel</button></div>
+        </div>
+      )}
       {state.hands.length === 0 && <p className="muted">No hands yet.</p>}
-      {[...state.hands].reverse().map((h) => <HandLog key={h.eventId} h={h} />)}
+      {[...state.hands].reverse().map((h) => <HandLog key={h.eventId} h={h} onEdit={() => onEdit(h)} />)}
 
       {!needSeating && (
         <div className="sticky"><div>
