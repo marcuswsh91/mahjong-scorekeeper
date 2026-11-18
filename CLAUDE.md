@@ -16,6 +16,7 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 - `npx vitest run src/ui`: hand-entry model and read-back worked payouts.
 - `npm run build && npx vite preview`: the built app, with offline caching, on http://localhost:4173. Service workers and the wake lock only work over HTTPS or localhost.
 - `python3 scripts/make-icons.py public`: regenerate the app icons.
+- `npm run deploy`: publish to GitHub Pages (https://<github-user>.github.io/mahjong-scorekeeper/). It tests, builds with `BASE_PATH=/mahjong-scorekeeper/`, and force-pushes `dist` to the `gh-pages` branch. Pushing `main` does not publish.
 
 ## Layout
 - `src/rules/catalogue.ts`: every rule item with its zh/en name, condition, default and source note.
@@ -91,7 +92,7 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - **Storage-blocked warning.**
 
 ## Open questions (from phase d)
-1. **The phone needs HTTPS for offline install and the wake lock.** Over `http://10.0.0.34` it can't install, work offline or keep the screen on. Options: a free static host (Netlify, Cloudflare Pages, GitHub Pages). Waiting on the user.
+1. **Resolved:** hosted on GitHub Pages (public repo `mahjong-scorekeeper`, HTTPS), published with `npm run deploy`. No Actions workflow: the GitHub CLI token lacks the `workflow` scope, and the user chose a deploy script over granting it.
 2. **Wake lock:** only the "unsupported/refused" paths were seen, in the in-app browser. Not yet checked on a real phone.
 3. **No official tai table exists.** Recommended values are from zh.wikibooks. Mahjong Time's table uses a different scale (清一色 40, 碰碰胡 10), so it isn't used.
 4. **An edit in progress isn't saved as a draft;** a reload during an edit returns to the scoreboard. Saved hands are never affected.
