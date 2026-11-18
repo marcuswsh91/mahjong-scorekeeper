@@ -10,6 +10,7 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 
 ## Commands
 - `npx vitest run src/engine`: engine tests (golden hands, edge cases, fast-check zero-sum).
+- `npx vitest run src/session`: rotation, scripted 將, undo and edit, snapshots, settlement, session zero-sum.
 - `npx tsc --noEmit`: type-check.
 
 ## Layout
@@ -23,6 +24,12 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - `score.ts`: `scoreHand` and `scoreFalseWin`.
   - `payments.ts`: dice and per-payer amounts.
 - `src/engine/testkit.ts`: `hand()`, `ctx()` and `rules()` helpers for synthetic tests.
+- `src/session/`
+  - `events.ts`: the append-only log. Edits and undos are appended too, and `effectiveEvents` applies them.
+  - `rotation.ts`: dealer, streak, round wind and the end of the 將, plus the seat-redraw check.
+  - `replay.ts`: recomputes every hand, total and next step from the log, using that session's own rule snapshot.
+  - `settle.ts`: the fewest transfers.
+- `src/storage/store.ts`: localStorage save after every event. A failed write is reported, never thrown.
 
 ## Glossary
 | Code | Chinese | English |
@@ -49,7 +56,7 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 
 ## Phase status
 - [x] **(a) Rule catalogue, scoring engine and tests** (branch `phase-a/scoring-engine`): 75 tests pass, made up of 59 golden hands, a count check, 7 illegal-hand checks, 4 詐胡 checks, 3 edge cases and a fast-check zero-sum test over 2,000 random hands and rule sets.
-- [ ] (b) Rotation, dice and session state. Also moves the 流局 golden case here, since a draw has no hand to score.
+- [x] **(b) Rotation, dice and session state** (branch `phase-b/session-state`, based on phase a): 120 tests pass in total. Phase b adds a scripted 24-hand 將 (streaks, 流局 including a triple-roll 流局, a 詐胡, all four round winds, the redraw prompt), undo and edit, rule snapshots, storage, settlement, and a fast-check session zero-sum test over 500 random logs.
 - [ ] (c) Interview, seating, hand entry, scoreboard and settlement.
 - [ ] (d) Table polish: tap targets, wake lock, undo and edit, PWA.
 
@@ -76,3 +83,11 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
 9. 「閒家自摸只莊家付莊台」= No means all three payers include dealer tai.
 10. 全求人 by self-draw (半求) scores no 全求人.
 11. The 一發 item needs a "won within one go-around" toggle at hand entry. It is only shown when 一發 is on.
+
+## Open questions (from phase b)
+1. **Bonus carries over after a 流局** (default No). When it's Yes, the drawn hand's roll is used only if the next hand's own roll gives no bonus. Should both bonuses stack instead?
+2. **詐胡 with "dealer stays":** the streak doesn't change. Should it add 1, like a 流局?
+3. **"Seating came out the same"** means every player is in the same seat as last 將. Should a rotation of the same order (everyone moved one seat) also count as the same?
+4. **The first seat entered** (seats[0]) is 東 and deals first in each new 將.
+5. **Totals are kept per player name,** so a player can swap in at a redraw. Names must be unique.
+6. **An edit that leaves a later redraw out of place** (the 將 hadn't ended yet) is flagged on the scoreboard, never blocked. The redraw still restarts at 東風東.
