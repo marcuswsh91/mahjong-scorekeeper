@@ -81,8 +81,6 @@ One phone, one scorekeeper, 4 players. Mobile-first PWA (TypeScript, React, Vite
   - reload mid-session and mid-entry (nothing lost),
   - settlement,
   - "Same as last time" from app open to seating in 2 taps.
-- [ ] (d) Table polish: tap targets, wake lock, undo and edit, PWA.
-
 - [x] **(d) Table polish** (branch `phase-d/table-polish`): 135 tests pass.
   - **Interview:** every full interview starts blank, and Next is locked until each item on the page has an answer. Each item shows its recommended (zh.wikibooks), common and last-time values, with one-tap fills. "Same as last time" still takes 2 taps.
   - **Hand entry:** who won and how fold into one line once picked, and the tile grid pins to the top above the rows.
